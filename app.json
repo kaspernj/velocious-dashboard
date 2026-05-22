@@ -1,0 +1,28 @@
+{
+  "expo": {
+    "name": "Velocious Dashboard",
+    "slug": "velocious-dashboard",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "scheme": "velociousdashboard",
+    "userInterfaceStyle": "automatic",
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+      "predictiveBackGestureEnabled": false,
+      "package": "com.kaspernj.velociousdashboard"
+    },
+    "web": {
+      "output": "static"
+    },
+    "plugins": [
+      "expo-router"
+    ],
+    "experiments": {
+      "typedRoutes": false,
+      "reactCompiler": false
+    },
+    "owner": "kaspernj"
+  }
+}
