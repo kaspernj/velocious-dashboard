@@ -5,6 +5,7 @@
   "description": "Multi-connection dashboard for Velocious background jobs (iOS, Android, web).",
   "license": "MIT",
   "scripts": {
+    "all-checks": "npm run typecheck && npm run lint",
     "start": "expo start",
     "android": "expo start --android",
     "ios": "expo start --ios",
