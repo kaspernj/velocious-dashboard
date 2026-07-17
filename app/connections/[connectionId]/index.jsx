@@ -219,8 +219,8 @@ class OverviewScreen extends ShapeComponent {
     }
   }
 
-  /** @returns {Promise<void>} - Manual pull-to-refresh. */
-  async onRefreshPress() {
+  /** @type {() => Promise<void>} - Manual pull-to-refresh. */
+  onRefreshPress = async () => {
     this.setState({refreshing: true})
 
     try {
@@ -230,8 +230,8 @@ class OverviewScreen extends ShapeComponent {
     }
   }
 
-  /** @returns {Promise<void>} - Removes this connection and returns to the list. */
-  async onRemovePress() {
+  /** @type {() => Promise<void>} - Removes this connection and returns to the list. */
+  onRemovePress = async () => {
     const connection = this.tt.connection()
 
     if (!connection) return
