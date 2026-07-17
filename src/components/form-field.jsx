@@ -45,7 +45,8 @@ class FormField extends ShapeComponent {
 
   /** @returns {React.JSX.Element} - Rendered field. */
   render() {
-    const {autoCapitalize, defaultValue, label, onChangeText, placeholder, testID} = this.p
+    const {autoCapitalize, label, onChangeText} = this.p
+    const {defaultValue, placeholder, testID} = this.props
 
     return (
       <View style={styles.wrap ||= {gap: 6}}>
