@@ -44,7 +44,8 @@ class Screen extends ShapeComponent {
 
   /** @returns {React.JSX.Element} - Rendered screen. */
   render() {
-    const {children, onRefresh, refreshing, testID} = this.p
+    const {children, refreshing, testID} = this.p
+    const {onRefresh} = this.props
 
     return (
       <SafeAreaView style={styles.safeArea ||= {backgroundColor: colors.background, flex: 1}}>
