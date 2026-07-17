@@ -128,28 +128,28 @@ class AddConnectionScreen extends ShapeComponent {
     this.mounted = false
   }
 
-  /** @param {string} text - New value. @returns {void} */
-  onNameChangeText(text) {
+  /** @type {(text: string) => void} - Stores the new name. */
+  onNameChangeText = (text) => {
     this.name = text
   }
 
-  /** @param {string} text - New value. @returns {void} */
-  onBaseUrlChangeText(text) {
+  /** @type {(text: string) => void} - Stores the new backend URL. */
+  onBaseUrlChangeText = (text) => {
     this.baseUrl = text
   }
 
-  /** @param {string} text - New value. @returns {void} */
-  onTokenChangeText(text) {
+  /** @type {(text: string) => void} - Stores the new access token. */
+  onTokenChangeText = (text) => {
     this.token = text
   }
 
-  /** @param {string} text - New value. @returns {void} */
-  onMountPathChangeText(text) {
+  /** @type {(text: string) => void} - Stores the new mount path. */
+  onMountPathChangeText = (text) => {
     this.mountPath = text
   }
 
-  /** @returns {Promise<void>} - Verifies and persists the connection. */
-  async onSavePress() {
+  /** @type {() => Promise<void>} - Verifies and persists the connection. */
+  onSavePress = async () => {
     const baseUrl = this.baseUrl.trim()
     const mountPath = this.mountPath.trim() || "/velocious/jobs"
     const token = this.token.trim()
