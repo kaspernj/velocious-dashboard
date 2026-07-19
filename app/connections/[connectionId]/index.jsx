@@ -177,6 +177,16 @@ class OverviewScreen extends ShapeComponent {
             </Text>
           </Pressable>
         </Link>
+        <Link
+          asChild
+          href={`/connections/${connectionId}/running-builds`}
+        >
+          <Pressable style={styles.runningBuilds ||= {alignItems: "center", borderColor: colors.border, borderRadius: 12, borderWidth: 1, marginTop: 4, padding: 14}} testID="overviewRunningBuildsButton">
+            <Text style={styles.runningBuildsText ||= {color: colors.primary, fontSize: 15, fontWeight: "600"}}>
+              {_("Running builds")}
+            </Text>
+          </Pressable>
+        </Link>
         {!this.connections.embedded &&
           <Pressable onPress={this.tt.onRemovePress} style={styles.remove ||= {alignItems: "center", marginTop: 4, padding: 12}} testID="overviewRemoveButton">
             <Text style={styles.removeText ||= {color: colors.danger, fontSize: 14}}>
