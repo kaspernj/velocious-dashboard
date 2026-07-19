@@ -101,11 +101,12 @@ class JobsScreen extends ShapeComponent {
 
     const connectionId = connection.id
     const activeStatus = stringParam(this.params.status) || "all"
+    const title = activeStatus === "handed_off" ? _("Running jobs") : _("Jobs")
     const {errorMessage, jobs, loading} = this.s
 
     return (
       <Screen testID="jobsScreen">
-        <Stack.Screen options={{title: _("Jobs")}} />
+        <Stack.Screen options={{title}} />
         <View style={styles.filters ||= {flexDirection: "row", flexWrap: "wrap", gap: 8}}>
           {FILTERS.map((filter) =>
             <Link

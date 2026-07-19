@@ -18,8 +18,6 @@ const colors = {
  * @type {Record<string, string>}
  */
 export const statusColors = {
-  assigned: "#fbbf24",
-  running: "#a78bfa",
   queued: "#38bdf8",
   handed_off: "#a78bfa",
   completed: "#34d399",

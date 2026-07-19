@@ -52,7 +52,8 @@ manager.
 
 ## Status
 
-- Read-only: overview (status counts), job lists (filter by status), job detail.
+- Read-only: overview (status counts), running jobs, job lists (filter by status),
+  job detail.
 - Planned: management actions (retry / delete / kill / enqueue) once the backend
   exposes them, plus richer throughput/latency views.
 

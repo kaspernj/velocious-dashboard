@@ -179,11 +179,11 @@ class OverviewScreen extends ShapeComponent {
         </Link>
         <Link
           asChild
-          href={`/connections/${connectionId}/running-builds`}
+          href={`/connections/${connectionId}/jobs?status=handed_off`}
         >
-          <Pressable style={styles.runningBuilds ||= {alignItems: "center", borderColor: colors.border, borderRadius: 12, borderWidth: 1, marginTop: 4, padding: 14}} testID="overviewRunningBuildsButton">
-            <Text style={styles.runningBuildsText ||= {color: colors.primary, fontSize: 15, fontWeight: "600"}}>
-              {_("Running builds")}
+          <Pressable style={styles.runningJobs ||= {alignItems: "center", borderColor: colors.border, borderRadius: 12, borderWidth: 1, marginTop: 4, padding: 14}} testID="overviewRunningJobsButton">
+            <Text style={styles.runningJobsText ||= {color: colors.primary, fontSize: 15, fontWeight: "600"}}>
+              {_("Running jobs")}
             </Text>
           </Pressable>
         </Link>
