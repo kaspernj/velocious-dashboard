@@ -70,10 +70,13 @@ class JobsScreen extends ShapeComponent {
     const status = stringParam(this.params.status)
     const page = Number(stringParam(this.params.page)) || 1
     const connectionId = stringParam(this.params.connectionId)
+    const connectionsLoading = this.connections.loading
 
     useEffect(() => {
+      if (connectionsLoading) return
+
       void this.tt.loadJobs({page, status})
-    }, [connectionId, status, page])
+    }, [connectionId, status, page, connectionsLoading])
   }
 
   /** @returns {void} */
