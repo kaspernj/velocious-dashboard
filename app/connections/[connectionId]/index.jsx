@@ -177,6 +177,16 @@ class OverviewScreen extends ShapeComponent {
             </Text>
           </Pressable>
         </Link>
+        <Link
+          asChild
+          href={`/connections/${connectionId}/jobs?status=handed_off`}
+        >
+          <Pressable style={styles.runningJobs ||= {alignItems: "center", borderColor: colors.border, borderRadius: 12, borderWidth: 1, marginTop: 4, padding: 14}} testID="overviewRunningJobsButton">
+            <Text style={styles.runningJobsText ||= {color: colors.primary, fontSize: 15, fontWeight: "600"}}>
+              {_("Running jobs")}
+            </Text>
+          </Pressable>
+        </Link>
         {!this.connections.embedded &&
           <Pressable onPress={this.tt.onRemovePress} style={styles.remove ||= {alignItems: "center", marginTop: 4, padding: 12}} testID="overviewRemoveButton">
             <Text style={styles.removeText ||= {color: colors.danger, fontSize: 14}}>
