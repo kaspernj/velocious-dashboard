@@ -6,7 +6,6 @@ import React from "react"
 import {SafeAreaProvider} from "react-native-safe-area-context"
 import {ConnectionsProvider} from "@/src/connections/use-connections"
 import colors from "@/src/theme/colors"
-import HydrationGate from "@/src/components/hydration-gate"
 // Resolved by Metro to a production or explicitly test-only implementation.
 // eslint-disable-next-line import/no-unresolved
 import SystemTestRuntime from "velocious-system-test-runtime"
@@ -17,15 +16,15 @@ export default function RootLayout() {
     <SystemTestRuntime>
       <SafeAreaProvider>
         <ConnectionsProvider>
-          <HydrationGate>
-            <Stack
-              screenOptions={{
-                contentStyle: {backgroundColor: colors.background},
-                headerStyle: {backgroundColor: colors.surface},
-                headerTintColor: colors.text
-              }}
-            />
-          </HydrationGate>
+          <Stack
+            screenOptions={{
+              contentStyle: {backgroundColor: colors.background},
+              headerStyle: {backgroundColor: colors.surface},
+              headerTintColor: colors.text
+            }}
+          >
+            <Stack.Screen name="(hydrated)" options={{headerShown: false}} />
+          </Stack>
           <StatusBar style="light" />
         </ConnectionsProvider>
       </SafeAreaProvider>
