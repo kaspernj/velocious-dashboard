@@ -65,9 +65,11 @@ describe("connection hydration boundary", () => {
         await hydration.arm(JSON.stringify([connection]))
         const reloadableSystemTest = /** @type {typeof systemTest & {initializeBrowserContext: () => Promise<void>, visitPathWithDriverAndReconnect: (path: string) => Promise<void>}} */ (systemTest)
 
-        await reloadableSystemTest.visitPathWithDriverAndReconnect(`/connections/${connectionId}/jobs?status=queued`)
+        await reloadableSystemTest.visitPathWithDriverAndReconnect("/")
         await reloadableSystemTest.initializeBrowserContext()
 
+        await systemTest.waitForTestIDText("hydrationLoadingLabel", "Loading connections…")
+        await systemTest.visit(`/connections/${connectionId}/jobs?status=queued`)
         await systemTest.waitForTestIDText("hydrationLoadingLabel", "Loading connections…")
         expect(fixtureServer.requests).toEqual([])
         expect(await systemTest.hasTestID("jobsScreen", {timeout: 0})).toEqual(false)
