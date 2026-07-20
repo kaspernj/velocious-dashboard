@@ -24,6 +24,8 @@
     "node_modules/**",
     "system-tests/**",
     "babel.config.js",
-    "eslint.config.js"
+    "eslint.config.js",
+    "metro.config.js",
+    "scripts/**"
   ]
 }

@@ -3,24 +3,18 @@ import "@/src/translations/setup"
 import {Stack} from "expo-router"
 import {StatusBar} from "expo-status-bar"
 import React from "react"
-import {View} from "react-native"
 import {SafeAreaProvider} from "react-native-safe-area-context"
-import useSystemTestExpo from "system-testing/build/use-system-test-expo.js"
-import "@/src/testing/connections-hydration-controller"
 import {ConnectionsProvider} from "@/src/connections/use-connections"
 import colors from "@/src/theme/colors"
 import HydrationGate from "@/src/components/hydration-gate"
+// Resolved by Metro to a production or explicitly test-only implementation.
+// eslint-disable-next-line import/no-unresolved
+import SystemTestRuntime from "velocious-system-test-runtime"
 
 /** Root layout: connections provider + a dark-themed native stack. */
 export default function RootLayout() {
-  useSystemTestExpo()
-  const systemTestingProps = {dataSet: {focussed: "true"}, testID: "systemTestingComponent"} as unknown as React.ComponentProps<typeof View>
-
   return (
-    <View
-      {...systemTestingProps}
-      style={{flex: 1}}
-    >
+    <SystemTestRuntime>
       <SafeAreaProvider>
         <ConnectionsProvider>
           <HydrationGate>
@@ -35,6 +29,6 @@ export default function RootLayout() {
           <StatusBar style="light" />
         </ConnectionsProvider>
       </SafeAreaProvider>
-    </View>
+    </SystemTestRuntime>
   )
 }

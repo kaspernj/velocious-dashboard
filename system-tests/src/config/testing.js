@@ -12,9 +12,9 @@ let appProcess = null
 async function startApp() {
   const appDir = process.env.SYSTEM_TEST_APP_DIR || process.cwd()
 
-  appProcess = spawn("npx", ["expo", "start", "--port", "4593"], {
+  appProcess = spawn("npx", ["expo", "start", "--clear", "--port", "4593"], {
     cwd: appDir,
-    env: process.env,
+    env: {...process.env, VELOCIOUS_SYSTEM_TEST_BUILD: "true"},
     stdio: "inherit"
   })
 
