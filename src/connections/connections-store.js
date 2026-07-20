@@ -4,6 +4,15 @@ import AsyncStorage from "@react-native-async-storage/async-storage"
 
 const STORAGE_KEY = "velocious-dashboard.connections"
 
+/** @typedef {Pick<typeof AsyncStorage, "getItem" | "setItem">} ConnectionsStorage */
+
+/** @returns {ConnectionsStorage} - Persisted connection storage, optionally supplied by an embedding host. */
+function connectionsStorage() {
+  const globalStorage = /** @type {typeof globalThis & {VELOCIOUS_DASHBOARD_CONNECTIONS_STORAGE?: ConnectionsStorage}} */ (globalThis)
+
+  return globalStorage.VELOCIOUS_DASHBOARD_CONNECTIONS_STORAGE || AsyncStorage
+}
+
 /**
  * @typedef {object} Connection
  * @property {string} id - Stable local id.
@@ -33,7 +42,7 @@ function normalizeConnections(value) {
 
 /** @returns {Promise<Connection[]>} - Persisted connections (empty when none). */
 export async function loadConnections() {
-  const raw = await AsyncStorage.getItem(STORAGE_KEY)
+  const raw = await connectionsStorage().getItem(STORAGE_KEY)
 
   if (!raw) return []
 
@@ -49,7 +58,7 @@ export async function loadConnections() {
  * @returns {Promise<void>} - Resolves when written.
  */
 export async function saveConnections(connections) {
-  await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(connections))
+  await connectionsStorage().setItem(STORAGE_KEY, JSON.stringify(connections))
 }
 
 /**

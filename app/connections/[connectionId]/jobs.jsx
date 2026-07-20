@@ -70,13 +70,12 @@ class JobsScreen extends ShapeComponent {
     const status = stringParam(this.params.status)
     const page = Number(stringParam(this.params.page)) || 1
     const connectionId = stringParam(this.params.connectionId)
-    const connectionsLoading = this.connections.loading
 
+    // The root HydrationGate holds this screen back until connections have
+    // hydrated, so the list is always resolved by the time it mounts.
     useEffect(() => {
-      if (connectionsLoading) return
-
       void this.tt.loadJobs({page, status})
-    }, [connectionId, status, page, connectionsLoading])
+    }, [connectionId, status, page])
   }
 
   /** @returns {void} */

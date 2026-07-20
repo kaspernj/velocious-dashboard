@@ -11,6 +11,7 @@
     "ios": "expo start --ios",
     "web": "expo start --web",
     "lint": "expo lint",
+    "verify:production-test-boundary": "node scripts/verify-production-system-test-boundary.js",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
@@ -43,6 +44,7 @@
     "@types/react": "~19.2.10",
     "eslint": "^9.39.2",
     "eslint-config-expo": "~55.0.0",
+    "system-testing": "^1.0.125",
     "typescript": "~5.9.2"
   },
   "private": true

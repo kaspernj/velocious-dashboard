@@ -1,0 +1,25 @@
+{
+  "name": "velocious-dashboard-system-tests",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node scripts/run-tests.js",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "awaitery": "^1.0.13",
+    "system-testing": "^1.0.125",
+    "velocious": "^1.0.514"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@types/selenium-webdriver": "^4.35.6",
+    "@types/ws": "^8.18.1",
+    "eslint": "^10.4.0",
+    "globals": "^17.7.0",
+    "selenium-webdriver": "^4.44.0",
+    "typescript": "^6.0.3"
+  }
+}
