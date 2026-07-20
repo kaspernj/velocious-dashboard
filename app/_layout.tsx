@@ -6,19 +6,22 @@ import React from "react"
 import {SafeAreaProvider} from "react-native-safe-area-context"
 import {ConnectionsProvider} from "@/src/connections/use-connections"
 import colors from "@/src/theme/colors"
+import HydrationGate from "@/src/components/hydration-gate"
 
 /** Root layout: connections provider + a dark-themed native stack. */
 export default function RootLayout() {
   return (
     <SafeAreaProvider>
       <ConnectionsProvider>
-        <Stack
-          screenOptions={{
-            contentStyle: {backgroundColor: colors.background},
-            headerStyle: {backgroundColor: colors.surface},
-            headerTintColor: colors.text
-          }}
-        />
+        <HydrationGate>
+          <Stack
+            screenOptions={{
+              contentStyle: {backgroundColor: colors.background},
+              headerStyle: {backgroundColor: colors.surface},
+              headerTintColor: colors.text
+            }}
+          />
+        </HydrationGate>
         <StatusBar style="light" />
       </ConnectionsProvider>
     </SafeAreaProvider>
