@@ -129,8 +129,18 @@ describe("live background-job count badges", () => {
         const hydration = await (await systemTest.getScoundrelClient()).getObject("VelociousDashboardConnectionsHydration")
 
         await hydration.arm(JSON.stringify([connection]))
+        const reloadableSystemTest = /** @type {typeof systemTest & {initializeBrowserContext: () => Promise<void>, visitPathWithDriverAndReconnect: (path: string) => Promise<void>}} */ (systemTest)
+
+        await reloadableSystemTest.visitPathWithDriverAndReconnect("/")
+        await reloadableSystemTest.initializeBrowserContext()
+        await systemTest.waitForTestIDText("hydrationLoadingLabel", "Loading connections…")
         await systemTest.visit(`/connections/${connectionId}/jobs`)
-        await hydration.release()
+        await systemTest.waitForTestIDText("hydrationLoadingLabel", "Loading connections…")
+        expect(fixture.requests).toEqual([])
+
+        const reloadedHydration = await (await systemTest.getScoundrelClient()).getObject("VelociousDashboardConnectionsHydration")
+
+        await reloadedHydration.release()
         await systemTest.waitForTestIDText("jobsFilterCount-queued", "2")
         expect(fixture.subscriptionParams).toEqual({authenticationToken: "test-token", mountAt: "/dashboard"})
 
