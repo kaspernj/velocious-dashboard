@@ -4,6 +4,17 @@ import assert from "node:assert/strict"
 import {describe, it} from "node:test"
 import JobCountsSession from "../src/background-jobs/job-counts-session.mjs"
 
+/** @returns {{promise: Promise<void>, resolve: () => void}} */
+function deferred() {
+  /** @type {() => void} */
+  let resolve = () => {}
+  const promise = new Promise((promiseResolve) => {
+    resolve = promiseResolve
+  })
+
+  return {promise, resolve}
+}
+
 class FakeSubscription {
   closed = false
   ready = Promise.resolve()
@@ -169,6 +180,71 @@ describe("JobCountsSession", () => {
 
     assert.equal(installed, true)
     assert.equal(FakeWebsocketClient.instance.disconnected, true)
+    await session.dispose()
+  })
+
+  it("takes a post-readiness snapshot when a capable snapshot wins the startup race", async () => {
+    const readiness = deferred()
+    class DeferredReadyClient extends FakeWebsocketClient {
+      subscription = Object.assign(new FakeSubscription(), {ready: readiness.promise})
+    }
+    let loads = 0
+    let serverRevision = 1
+    const states = []
+    const session = new JobCountsSession({
+      connection: {baseUrl: "http://capable.example.test", mountPath: "/jobs"},
+      loadSnapshot: async () => {
+        loads += 1
+        return {
+          capabilities: {backgroundJobCountDeltas: 1},
+          counts: {all: serverRevision, completed: 0, failed: 0, handed_off: 0, orphaned: 0, queued: serverRevision},
+          revision: serverRevision,
+          total: serverRevision
+        }
+      },
+      onChange: (state) => states.push(state),
+      WebsocketClient: DeferredReadyClient
+    })
+
+    const starting = session.start()
+    await new Promise((resolve) => setImmediate(resolve))
+    assert.equal(loads, 1)
+
+    serverRevision = 2
+    readiness.resolve()
+    await starting
+
+    assert.equal(loads, 2)
+    assert.equal(states.at(-1)?.revision, 2)
+    assert.equal(states.at(-1)?.counts.queued, 2)
+    await session.dispose()
+  })
+
+  it("does not repeat the startup snapshot when channel readiness wins the race", async () => {
+    const snapshotGate = deferred()
+    let loads = 0
+    const session = new JobCountsSession({
+      connection: {baseUrl: "http://capable.example.test", mountPath: "/jobs"},
+      loadSnapshot: async () => {
+        loads += 1
+        await snapshotGate.promise
+        return {
+          capabilities: {backgroundJobCountDeltas: 1},
+          counts: {all: 1, completed: 0, failed: 0, handed_off: 0, orphaned: 0, queued: 1},
+          revision: 1,
+          total: 1
+        }
+      },
+      onChange: () => {},
+      WebsocketClient: FakeWebsocketClient
+    })
+
+    const starting = session.start()
+    await new Promise((resolve) => setImmediate(resolve))
+    snapshotGate.resolve()
+    await starting
+
+    assert.equal(loads, 1)
     await session.dispose()
   })
 })

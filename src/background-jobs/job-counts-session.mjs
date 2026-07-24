@@ -62,12 +62,17 @@ export default class JobCountsSession {
   async start() {
     if (this.disposed) return
 
+    let subscriptionReady = false
     const subscriptionResult = this._startSubscription()
-      .then(() => null)
+      .then(() => {
+        subscriptionReady = true
+        return null
+      })
       .catch((error) => error instanceof Error ? error : new Error(String(error)))
 
     await this.liveCounts.start()
     if (this.disposed) return
+    const snapshotWonRace = !subscriptionReady
 
     if (this.legacyStats) {
       this.subscription?.close()
@@ -80,6 +85,7 @@ export default class JobCountsSession {
     const subscriptionError = await subscriptionResult
 
     if (subscriptionError) throw subscriptionError
+    if (snapshotWonRace && !this.disposed) await this.refresh()
   }
 
   /** @returns {Promise<void>} - Requests one coalesced authoritative snapshot. */

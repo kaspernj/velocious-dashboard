@@ -23,11 +23,15 @@ function stats(revision, counts) {
 async function startFixtureServer() {
   /** @type {string[]} */
   const requests = []
-  const snapshots = [stats(1, {all: 3, completed: 0, failed: 0, handed_off: 1, orphaned: 0, queued: 2})]
+  const initialStats = stats(1, {all: 3, completed: 0, failed: 0, handed_off: 1, orphaned: 0, queued: 2})
+  const snapshots = [initialStats, initialStats]
   const websocketServer = new WebSocketServer({noServer: true})
   /** @type {import("ws").WebSocket | null} */
   let subscriber = null
   let subscriptionId = ""
+  let statsResponses = 0
+  /** @type {(() => void) | null} */
+  let acknowledgePendingSubscription = null
   /** @type {object | null} */
   let subscriptionParams = null
   const server = createServer((request, response) => {
@@ -52,6 +56,9 @@ async function startFixtureServer() {
 
       response.setHeader("Content-Type", "application/json")
       response.end(JSON.stringify(snapshot))
+      statsResponses += 1
+      acknowledgePendingSubscription?.()
+      acknowledgePendingSubscription = null
       return
     }
 
@@ -82,7 +89,13 @@ async function startFixtureServer() {
       subscriber = websocket
       subscriptionId = message.subscriptionId
       subscriptionParams = message.params
-      websocket.send(JSON.stringify({subscriptionId: message.subscriptionId, type: "channel-subscribed"}))
+      const acknowledge = () => websocket.send(JSON.stringify({subscriptionId: message.subscriptionId, type: "channel-subscribed"}))
+
+      if (statsResponses > 0) {
+        acknowledge()
+      } else {
+        acknowledgePendingSubscription = acknowledge
+      }
     })
   })
 
@@ -149,12 +162,12 @@ describe("live background-job count badges", () => {
         await systemTest.waitForTestIDText("jobsFilterCount-queued", "1")
         await systemTest.waitForTestIDText("jobsFilterCount-handed_off", "2")
         fixture.publish({deltas: {queued: -1}, revision: 2, type: "background-job-count-delta"})
-        expect(fixture.requests.filter((url) => url === "/dashboard/api/stats").length).toEqual(1)
+        expect(fixture.requests.filter((url) => url === "/dashboard/api/stats").length).toEqual(2)
 
         fixture.snapshots.push(stats(4, {all: 2, completed: 1, failed: 0, handed_off: 1, orphaned: 0, queued: 0}))
         fixture.publish({deltas: {all: -1, completed: 1, queued: -1}, revision: 4, type: "background-job-count-delta"})
         await systemTest.waitForTestIDText("jobsFilterCount-completed", "1")
-        expect(fixture.requests.filter((url) => url === "/dashboard/api/stats").length).toEqual(2)
+        expect(fixture.requests.filter((url) => url === "/dashboard/api/stats").length).toEqual(3)
       } finally {
         try {
           const hydration = await (await systemTest.getScoundrelClient()).getObject("VelociousDashboardConnectionsHydration")
