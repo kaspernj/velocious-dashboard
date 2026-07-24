@@ -134,4 +134,28 @@ describe("LiveJobCounts", () => {
     assert.equal(counts.bufferedCount(), 0)
     assert.deepEqual(states, [])
   })
+
+  it("rejects a consecutive delta that would underflow and recovers authoritatively", async () => {
+    const recovery = deferred()
+    let loads = 0
+    const states = []
+    const counts = new LiveJobCounts({
+      loadSnapshot: async () => {
+        loads += 1
+        return loads === 1 ? snapshot(40, {queued: 0}) : await recovery.promise
+      },
+      onChange: (state) => states.push(state)
+    })
+
+    await counts.start()
+    counts.receive({deltas: {queued: -1}, revision: 41, type: "background-job-count-delta"})
+    await Promise.resolve()
+
+    assert.equal(loads, 2)
+    assert.equal(counts.current()?.revision, 40)
+    recovery.resolve(snapshot(41, {queued: 0}))
+    await counts.whenIdle()
+    assert.equal(counts.current()?.revision, 41)
+    assert.equal(states.at(-1)?.counts.queued, 0)
+  })
 })

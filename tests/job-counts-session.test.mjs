@@ -116,4 +116,59 @@ describe("JobCountsSession", () => {
     assert.equal(FakeWebsocketClient.instance.subscription.closed, true)
     assert.equal(FakeWebsocketClient.instance.disconnected, true)
   })
+
+  it("falls back to a legacy snapshot when websocket connection is rejected", async () => {
+    class RejectedConnectionClient extends FakeWebsocketClient {
+      async connect() {
+        throw new Error("WebSocket unsupported")
+      }
+    }
+    const states = []
+    const session = new JobCountsSession({
+      connection: {baseUrl: "http://legacy.example.test", mountPath: "/jobs"},
+      loadSnapshot: async () => ({
+        counts: {all: 2, completed: 1, failed: 0, handed_off: 0, orphaned: 0, queued: 1},
+        total: 2
+      }),
+      onChange: (state) => states.push(state),
+      WebsocketClient: RejectedConnectionClient
+    })
+
+    await session.start()
+
+    assert.deepEqual(states.at(-1), {
+      counts: {all: 2, completed: 1, failed: 0, handed_off: 0, orphaned: 0, queued: 1},
+      revision: 1,
+      total: 2
+    })
+    assert.equal(FakeWebsocketClient.instance.subscription.closed, true)
+    assert.equal(FakeWebsocketClient.instance.disconnected, true)
+    await session.dispose()
+  })
+
+  it("falls back to legacy polling when the channel subscription is rejected", async () => {
+    class RejectedSubscriptionClient extends FakeWebsocketClient {
+      subscription = Object.assign(new FakeSubscription(), {
+        ready: Promise.reject(new Error("Unknown channel"))
+      })
+    }
+    let installed = false
+    const session = new JobCountsSession({
+      connection: {baseUrl: "http://legacy.example.test", mountPath: "/jobs"},
+      loadSnapshot: async () => ({
+        counts: {all: 0, completed: 0, failed: 0, handed_off: 0, orphaned: 0, queued: 0},
+        total: 0
+      }),
+      onChange: () => {
+        installed = true
+      },
+      WebsocketClient: RejectedSubscriptionClient
+    })
+
+    await session.start()
+
+    assert.equal(installed, true)
+    assert.equal(FakeWebsocketClient.instance.disconnected, true)
+    await session.dispose()
+  })
 })

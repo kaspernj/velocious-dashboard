@@ -62,26 +62,24 @@ export default class JobCountsSession {
   async start() {
     if (this.disposed) return
 
-    this.subscription = this.websocketClient.subscribeChannel(COUNTS_CHANNEL, {
-      onMessage: (message) => this.liveCounts.receive(message),
-      onResume: () => this.liveCounts.reconnect(),
-      params: {
-        authenticationToken: this.connection.token || "",
-        mountAt: normalizeMountPath(this.connection.mountPath)
-      }
-    })
+    const subscriptionResult = this._startSubscription()
+      .then(() => null)
+      .catch((error) => error instanceof Error ? error : new Error(String(error)))
 
-    await this.websocketClient.connect()
-    await this.subscription.ready
+    await this.liveCounts.start()
+    if (this.disposed) return
 
-    if (!this.disposed) await this.liveCounts.start()
-
-    if (!this.disposed && this.legacyStats) {
-      this.subscription.close()
+    if (this.legacyStats) {
+      this.subscription?.close()
       this.subscription = null
       await this.websocketClient.disconnectAndStopReconnect()
       this.pollTimer = setInterval(() => this.liveCounts.reconnect(), LEGACY_POLL_INTERVAL_MS)
+      return
     }
+
+    const subscriptionError = await subscriptionResult
+
+    if (subscriptionError) throw subscriptionError
   }
 
   /** @returns {Promise<void>} - Requests one coalesced authoritative snapshot. */
@@ -106,6 +104,21 @@ export default class JobCountsSession {
     this.subscription?.close()
     this.subscription = null
     await this.websocketClient.disconnectAndStopReconnect()
+  }
+
+  /** @returns {Promise<void>} - Opens and awaits the subscribed framework channel. */
+  async _startSubscription() {
+    this.subscription = this.websocketClient.subscribeChannel(COUNTS_CHANNEL, {
+      onMessage: (message) => this.liveCounts.receive(message),
+      onResume: () => this.liveCounts.reconnect(),
+      params: {
+        authenticationToken: this.connection.token || "",
+        mountAt: normalizeMountPath(this.connection.mountPath)
+      }
+    })
+
+    await this.websocketClient.connect()
+    await this.subscription.ready
   }
 
   /** @returns {Promise<any>} - Normalizes legacy snapshots into a local polling revision. */

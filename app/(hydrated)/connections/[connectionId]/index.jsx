@@ -7,6 +7,7 @@ import colors, {colorForStatus} from "@/src/theme/colors"
 import _ from "gettext-universal/build/src/translate.js"
 import JobsClient from "@/src/api/jobs-client"
 import JobCountsSession from "@/src/background-jobs/job-counts-session.mjs"
+import {overviewCountsLoadingState} from "@/src/background-jobs/connection-count-state.mjs"
 import {memo, useEffect} from "react"
 import propTypesExact from "prop-types-exact"
 import Screen from "@/src/components/screen"
@@ -209,6 +210,8 @@ class OverviewScreen extends ShapeComponent {
   startCountsSession(connection) {
     const generation = ++this.sessionGeneration
     const client = new JobsClient(connection)
+
+    this.setState(overviewCountsLoadingState())
     const session = new JobCountsSession({
       connection,
       loadSnapshot: async () => await client.stats(),

@@ -85,6 +85,12 @@ export default class LiveJobCounts {
       return
     }
 
+    if (this._wouldUnderflow(delta)) {
+      this.uncertain = true
+      this._requestRecovery()
+      return
+    }
+
     this._apply(delta)
   }
 
@@ -126,11 +132,20 @@ export default class LiveJobCounts {
     const nextCounts = {...this.state.counts}
 
     for (const [bucket, amount] of Object.entries(delta.deltas)) {
-      nextCounts[bucket] = Math.max(0, nextCounts[bucket] + amount)
+      nextCounts[bucket] += amount
     }
 
     this.state = {...this.state, counts: nextCounts, revision: delta.revision}
     this.onChange(this.state)
+  }
+
+  /** @param {{deltas: Record<string, number>}} delta @returns {boolean} - Whether applying this delta would make a bucket negative. */
+  _wouldUnderflow(delta) {
+    const state = this.state
+
+    if (!state) return false
+
+    return Object.entries(delta.deltas).some(([bucket, amount]) => state.counts[bucket] + amount < 0)
   }
 
   /** @param {{deltas: Record<string, number>, revision: number, type: string}} delta */
@@ -232,6 +247,11 @@ export default class LiveJobCounts {
       if (!this.state || delta.revision <= this.state.revision) continue
 
       if (delta.revision !== this.state.revision + 1) {
+        this.uncertain = true
+        break
+      }
+
+      if (this._wouldUnderflow(delta)) {
         this.uncertain = true
         break
       }

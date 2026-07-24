@@ -6,6 +6,7 @@ import SystemTest from "system-testing/build/system-test.js"
 import {WebSocketServer} from "ws"
 
 const connectionId = "live-counts-connection"
+const replacementConnectionId = "replacement-live-counts-connection"
 
 /** @param {number} revision @param {Record<string, number>} counts */
 function stats(revision, counts) {
@@ -154,6 +155,47 @@ describe("live background-job count badges", () => {
         fixture.publish({deltas: {all: -1, completed: 1, queued: -1}, revision: 4, type: "background-job-count-delta"})
         await systemTest.waitForTestIDText("jobsFilterCount-completed", "1")
         expect(fixture.requests.filter((url) => url === "/dashboard/api/stats").length).toEqual(2)
+      } finally {
+        try {
+          const hydration = await (await systemTest.getScoundrelClient()).getObject("VelociousDashboardConnectionsHydration")
+
+          await hydration.reset()
+        } finally {
+          await fixture.close()
+        }
+      }
+    })
+  })
+
+  it("clears badges while a replacement connection loads", async () => {
+    await SystemTest.run(async (systemTest) => {
+      const fixture = await startFixtureServer()
+      const connection = {
+        baseUrl: fixture.baseUrl,
+        id: connectionId,
+        mountPath: "/dashboard",
+        name: "Live counts",
+        token: "test-token"
+      }
+      const replacementConnection = {...connection, id: replacementConnectionId, name: "Replacement counts"}
+
+      try {
+        const hydration = await (await systemTest.getScoundrelClient()).getObject("VelociousDashboardConnectionsHydration")
+
+        await hydration.arm(JSON.stringify([connection, replacementConnection]))
+        const reloadableSystemTest = /** @type {typeof systemTest & {initializeBrowserContext: () => Promise<void>, visitPathWithDriverAndReconnect: (path: string) => Promise<void>}} */ (systemTest)
+
+        await reloadableSystemTest.visitPathWithDriverAndReconnect("/")
+        await reloadableSystemTest.initializeBrowserContext()
+        await systemTest.waitForTestIDText("hydrationLoadingLabel", "Loading connections…")
+        await systemTest.visit(`/connections/${connectionId}/jobs`)
+        const reloadedHydration = await (await systemTest.getScoundrelClient()).getObject("VelociousDashboardConnectionsHydration")
+
+        await reloadedHydration.release()
+        await systemTest.waitForTestIDText("jobsFilterCount-queued", "2")
+        await systemTest.visit(`/connections/${replacementConnectionId}/jobs`)
+        await systemTest.findByTestID("jobsCountsError")
+        expect(await systemTest.hasTestID("jobsFilterCount-queued", {timeout: 0})).toEqual(false)
       } finally {
         try {
           const hydration = await (await systemTest.getScoundrelClient()).getObject("VelociousDashboardConnectionsHydration")
