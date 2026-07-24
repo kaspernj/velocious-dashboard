@@ -11,6 +11,7 @@
     "ios": "expo start --ios",
     "web": "expo start --web",
     "lint": "expo lint",
+    "test:unit": "node --test tests/*.test.mjs",
     "verify:production-test-boundary": "node scripts/verify-production-system-test-boundary.js",
     "typecheck": "tsc --noEmit"
   },
@@ -37,7 +38,8 @@
     "react-native-web": "~0.21.0",
     "react-native-worklets": "0.7.4",
     "responsive-breakpoints": "^0.1.6",
-    "set-state-compare": "^1.0.86"
+    "set-state-compare": "^1.0.86",
+    "snapreq": "^0.0.10"
   },
   "devDependencies": {
     "@types/prop-types": "^15.7.15",

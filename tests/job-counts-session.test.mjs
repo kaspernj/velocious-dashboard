@@ -1,0 +1,250 @@
+// @ts-check
+
+import assert from "node:assert/strict"
+import {describe, it} from "node:test"
+import JobCountsSession from "../src/background-jobs/job-counts-session.mjs"
+
+/** @returns {{promise: Promise<void>, resolve: () => void}} */
+function deferred() {
+  /** @type {() => void} */
+  let resolve = () => {}
+  const promise = new Promise((promiseResolve) => {
+    resolve = promiseResolve
+  })
+
+  return {promise, resolve}
+}
+
+class FakeSubscription {
+  closed = false
+  ready = Promise.resolve()
+
+  close() {
+    this.closed = true
+  }
+}
+
+class FakeWebsocketClient {
+  /** @type {FakeWebsocketClient} */
+  static instance
+
+  /** @param {{url: string}} options */
+  constructor(options) {
+    this.options = options
+    FakeWebsocketClient.instance = this
+  }
+
+  connected = false
+  disconnected = false
+  subscription = new FakeSubscription()
+
+  /** @param {string} channelType @param {any} options */
+  subscribeChannel(channelType, options) {
+    this.channelType = channelType
+    this.subscriptionOptions = options
+    return this.subscription
+  }
+
+  async connect() {
+    this.connected = true
+  }
+
+  async disconnectAndStopReconnect() {
+    this.disconnected = true
+  }
+}
+
+describe("JobCountsSession", () => {
+  it("uses the framework channel name and mount-token authorization contract before snapshotting", async () => {
+    /** @type {string[]} */
+    const order = []
+    class OrderedClient extends FakeWebsocketClient {
+      /** @param {string} channelType @param {any} options */
+      subscribeChannel(channelType, options) {
+        order.push("subscribe")
+        return super.subscribeChannel(channelType, options)
+      }
+
+      async connect() {
+        order.push("connect")
+        await super.connect()
+      }
+    }
+    const session = new JobCountsSession({
+      connection: {
+        baseUrl: "https://jobs.example.test/",
+        mountPath: "/velocious/jobs/",
+        token: "secret"
+      },
+      loadSnapshot: async () => {
+        order.push("snapshot")
+        return {
+          capabilities: {backgroundJobCountDeltas: 1},
+          counts: {all: 0, completed: 0, failed: 0, handed_off: 0, orphaned: 0, queued: 0},
+          revision: 7,
+          total: 0
+        }
+      },
+      onChange: () => {},
+      WebsocketClient: OrderedClient
+    })
+
+    await session.start()
+
+    const client = FakeWebsocketClient.instance
+    assert.deepEqual(order, ["subscribe", "connect", "snapshot"])
+    assert.equal(client.options.url, "wss://jobs.example.test/websocket")
+    assert.equal(client.channelType, "velocious-background-job-counts")
+    assert.deepEqual(client.subscriptionOptions.params, {
+      authenticationToken: "secret",
+      mountAt: "/velocious/jobs"
+    })
+  })
+
+  it("recovers on resume and closes the subscription and reconnect loop on disposal", async () => {
+    let loads = 0
+    const session = new JobCountsSession({
+      connection: {baseUrl: "http://localhost:3000", mountPath: "/jobs"},
+      loadSnapshot: async () => {
+        loads += 1
+        return {
+          capabilities: {backgroundJobCountDeltas: 1},
+          counts: {all: 0, completed: 0, failed: 0, handed_off: 0, orphaned: 0, queued: 0},
+          revision: loads,
+          total: 0
+        }
+      },
+      onChange: () => {},
+      WebsocketClient: FakeWebsocketClient
+    })
+
+    await session.start()
+    FakeWebsocketClient.instance.subscriptionOptions.onResume()
+    await session.whenIdle()
+    assert.equal(loads, 2)
+
+    await session.dispose()
+    assert.equal(FakeWebsocketClient.instance.subscription.closed, true)
+    assert.equal(FakeWebsocketClient.instance.disconnected, true)
+  })
+
+  it("falls back to a legacy snapshot when websocket connection is rejected", async () => {
+    class RejectedConnectionClient extends FakeWebsocketClient {
+      async connect() {
+        throw new Error("WebSocket unsupported")
+      }
+    }
+    const states = []
+    const session = new JobCountsSession({
+      connection: {baseUrl: "http://legacy.example.test", mountPath: "/jobs"},
+      loadSnapshot: async () => ({
+        counts: {all: 2, completed: 1, failed: 0, handed_off: 0, orphaned: 0, queued: 1},
+        total: 2
+      }),
+      onChange: (state) => states.push(state),
+      WebsocketClient: RejectedConnectionClient
+    })
+
+    await session.start()
+
+    assert.deepEqual(states.at(-1), {
+      counts: {all: 2, completed: 1, failed: 0, handed_off: 0, orphaned: 0, queued: 1},
+      revision: 1,
+      total: 2
+    })
+    assert.equal(FakeWebsocketClient.instance.subscription.closed, true)
+    assert.equal(FakeWebsocketClient.instance.disconnected, true)
+    await session.dispose()
+  })
+
+  it("falls back to legacy polling when the channel subscription is rejected", async () => {
+    class RejectedSubscriptionClient extends FakeWebsocketClient {
+      subscription = Object.assign(new FakeSubscription(), {
+        ready: Promise.reject(new Error("Unknown channel"))
+      })
+    }
+    let installed = false
+    const session = new JobCountsSession({
+      connection: {baseUrl: "http://legacy.example.test", mountPath: "/jobs"},
+      loadSnapshot: async () => ({
+        counts: {all: 0, completed: 0, failed: 0, handed_off: 0, orphaned: 0, queued: 0},
+        total: 0
+      }),
+      onChange: () => {
+        installed = true
+      },
+      WebsocketClient: RejectedSubscriptionClient
+    })
+
+    await session.start()
+
+    assert.equal(installed, true)
+    assert.equal(FakeWebsocketClient.instance.disconnected, true)
+    await session.dispose()
+  })
+
+  it("takes a post-readiness snapshot when a capable snapshot wins the startup race", async () => {
+    const readiness = deferred()
+    class DeferredReadyClient extends FakeWebsocketClient {
+      subscription = Object.assign(new FakeSubscription(), {ready: readiness.promise})
+    }
+    let loads = 0
+    let serverRevision = 1
+    const states = []
+    const session = new JobCountsSession({
+      connection: {baseUrl: "http://capable.example.test", mountPath: "/jobs"},
+      loadSnapshot: async () => {
+        loads += 1
+        return {
+          capabilities: {backgroundJobCountDeltas: 1},
+          counts: {all: serverRevision, completed: 0, failed: 0, handed_off: 0, orphaned: 0, queued: serverRevision},
+          revision: serverRevision,
+          total: serverRevision
+        }
+      },
+      onChange: (state) => states.push(state),
+      WebsocketClient: DeferredReadyClient
+    })
+
+    const starting = session.start()
+    await new Promise((resolve) => setImmediate(resolve))
+    assert.equal(loads, 1)
+
+    serverRevision = 2
+    readiness.resolve()
+    await starting
+
+    assert.equal(loads, 2)
+    assert.equal(states.at(-1)?.revision, 2)
+    assert.equal(states.at(-1)?.counts.queued, 2)
+    await session.dispose()
+  })
+
+  it("does not repeat the startup snapshot when channel readiness wins the race", async () => {
+    const snapshotGate = deferred()
+    let loads = 0
+    const session = new JobCountsSession({
+      connection: {baseUrl: "http://capable.example.test", mountPath: "/jobs"},
+      loadSnapshot: async () => {
+        loads += 1
+        await snapshotGate.promise
+        return {
+          capabilities: {backgroundJobCountDeltas: 1},
+          counts: {all: 1, completed: 0, failed: 0, handed_off: 0, orphaned: 0, queued: 1},
+          revision: 1,
+          total: 1
+        }
+      },
+      onChange: () => {},
+      WebsocketClient: FakeWebsocketClient
+    })
+
+    const starting = session.start()
+    await new Promise((resolve) => setImmediate(resolve))
+    snapshotGate.resolve()
+    await starting
+
+    assert.equal(loads, 1)
+    await session.dispose()
+  })
+})

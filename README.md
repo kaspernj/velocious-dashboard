@@ -41,7 +41,12 @@ Then **Add connection** with:
 - **Mount path** — the prefix you mounted at (default `/velocious/jobs`).
 
 Connections are stored locally on the device. The app verifies the URL with a
-health check before saving, then polls the overview for live counts.
+health check before saving. On current Velocious backends, status counts start
+from one authoritative `/api/stats` snapshot and then update immediately from
+revisioned `velocious-background-job-counts` channel deltas. Duplicate events
+are ignored, while revision gaps and reconnects trigger one coalesced recovery
+snapshot. Backends without the count-delta capability retain bounded legacy
+stats polling.
 
 ## Embedded mode
 
@@ -64,11 +69,12 @@ app/                                  expo-router routes
   index.jsx                           connection list
   connections/new.jsx                 add a connection
   connections/[connectionId]/         per-connection screens
-    index.jsx                         overview (polls /api/stats)
-    jobs.jsx                          job list (filter by status)
+    index.jsx                         overview (snapshot + revisioned deltas)
+    jobs.jsx                          job list with live status-count badges
     jobs/[jobId].jsx                  job detail
 src/
   api/jobs-client.js                  REST client for the jobs API
+  background-jobs/                    count snapshot/delta session state
   connections/                        persisted multi-backend connections
   components/                         Screen, FormField, StatusBadge
   config/runtime.js                   embedded vs standalone detection
