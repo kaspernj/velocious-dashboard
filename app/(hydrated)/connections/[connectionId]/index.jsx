@@ -6,7 +6,8 @@ import {shapeComponent, ShapeComponent} from "set-state-compare/build/shape-comp
 import colors, {colorForStatus} from "@/src/theme/colors"
 import _ from "gettext-universal/build/src/translate.js"
 import JobsClient from "@/src/api/jobs-client"
-import {memo} from "react"
+import JobCountsSession from "@/src/background-jobs/job-counts-session.mjs"
+import {memo, useEffect} from "react"
 import propTypesExact from "prop-types-exact"
 import Screen from "@/src/components/screen"
 import {stringParam} from "@/src/utils/params"
@@ -23,7 +24,7 @@ import {useConnections} from "@/src/connections/use-connections"
 
 /**
  * @typedef {object} OverviewScreenState
- * @property {{counts: Record<string, number>, total: number} | null} stats - Latest stats payload.
+ * @property {{counts: Record<string, number>, revision: number, total: number} | null} stats - Latest stats payload.
  * @property {string | null} errorMessage - Last fetch error.
  * @property {boolean} loading - Whether the first load is in progress.
  * @property {boolean} refreshing - Whether a pull-to-refresh is running.
@@ -37,23 +38,21 @@ const STATUS_LABELS = {
   orphaned: "Orphaned",
   queued: "Queued"
 }
-const POLL_INTERVAL_MS = 4000
-
 /** @type {Record<string, object>} */
 const styles = {}
 
 /**
- * Overview of a single backend's job counts. Polls `/api/stats`.
+ * Overview of a single backend's revisioned job counts.
  * @extends {ShapeComponent<OverviewScreenProps, OverviewScreenState>}
  */
 class OverviewScreen extends ShapeComponent {
   static propTypes = propTypesExact({})
 
   mounted = true
-  requestId = 0
 
-  /** @type {ReturnType<typeof setInterval> | undefined} */
-  pollTimer
+  /** @type {JobCountsSession | null} */
+  countsSession = null
+  sessionGeneration = 0
 
   /** @type {ConnectionsContextValue} */
   connections
@@ -78,21 +77,22 @@ class OverviewScreen extends ShapeComponent {
     this.connections = useConnections()
     this.params = useLocalSearchParams()
     this.router = useRouter()
-  }
 
-  /** @returns {void} */
-  componentDidMount() {
-    if (!this.tt.connection()) return
+    const connection = this.tt.connection()
 
-    void this.tt.loadStats()
-    this.pollTimer = setInterval(() => void this.tt.loadStats(), POLL_INTERVAL_MS)
+    useEffect(() => {
+      if (!connection) return
+
+      const session = this.tt.startCountsSession(connection)
+
+      return () => void this.tt.stopCountsSession(session)
+    }, [connection])
   }
 
   /** @returns {void} */
   componentWillUnmount() {
     this.mounted = false
-
-    if (this.pollTimer) clearInterval(this.pollTimer)
+    this.sessionGeneration += 1
   }
 
   /** @returns {React.JSX.Element} - Rendered overview. */
@@ -205,28 +205,42 @@ class OverviewScreen extends ShapeComponent {
     return connectionId ? this.connections.getConnection(connectionId) : undefined
   }
 
-  /** @returns {Promise<void>} - Loads the latest stats. */
-  async loadStats() {
-    const connection = this.tt.connection()
-
-    // Expected when the connection was removed while this screen is open; the
-    // render path shows a "not found" state.
-    if (!connection) return
-
-    const requestId = ++this.requestId
+  /** @param {Connection} connection @returns {JobCountsSession} - Starts this mount's live count session. */
+  startCountsSession(connection) {
+    const generation = ++this.sessionGeneration
     const client = new JobsClient(connection)
+    const session = new JobCountsSession({
+      connection,
+      loadSnapshot: async () => await client.stats(),
+      onChange: (stats) => {
+        if (!this.mounted || generation !== this.sessionGeneration) return
 
-    try {
-      const stats = await client.stats()
+        this.setState({errorMessage: null, loading: false, stats})
+      },
+      onError: (error) => {
+        if (!this.mounted || generation !== this.sessionGeneration) return
 
-      if (!this.mounted || requestId !== this.requestId) return
+        this.setState({errorMessage: error.message, loading: false})
+      }
+    })
 
-      this.setState({errorMessage: null, loading: false, stats})
-    } catch (error) {
-      if (!this.mounted || requestId !== this.requestId) return
-
+    this.countsSession = session
+    void session.start().catch((error) => {
+      if (!this.mounted || generation !== this.sessionGeneration) return
       this.setState({errorMessage: error instanceof Error ? error.message : String(error), loading: false})
+    })
+
+    return session
+  }
+
+  /** @param {JobCountsSession} session @returns {Promise<void>} - Stops a superseded mount session. */
+  async stopCountsSession(session) {
+    if (this.countsSession === session) {
+      this.sessionGeneration += 1
+      this.countsSession = null
     }
+
+    await session.dispose()
   }
 
   /** @type {() => Promise<void>} - Manual pull-to-refresh. */
@@ -234,7 +248,7 @@ class OverviewScreen extends ShapeComponent {
     this.setState({refreshing: true})
 
     try {
-      await this.tt.loadStats()
+      await this.countsSession?.refresh()
     } finally {
       if (this.mounted) this.setState({refreshing: false})
     }

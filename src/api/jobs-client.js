@@ -46,7 +46,7 @@ export default class JobsClient {
     return await this._get("/api/health")
   }
 
-  /** @returns {Promise<{counts: Record<string, number>, total: number, generatedAtMs: number}>} - Status counts. */
+  /** @returns {Promise<{capabilities?: {backgroundJobCountDeltas?: number}, counts: Record<string, number>, revision?: number, total: number, generatedAtMs: number}>} - Status counts. */
   async stats() {
     return await this._get("/api/stats")
   }

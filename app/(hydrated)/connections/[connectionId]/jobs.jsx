@@ -7,6 +7,7 @@ import _ from "gettext-universal/build/src/translate.js"
 import colors from "@/src/theme/colors"
 import {formatRelative} from "@/src/utils/format-time"
 import JobsClient from "@/src/api/jobs-client"
+import JobCountsSession from "@/src/background-jobs/job-counts-session.mjs"
 import {memo, useEffect} from "react"
 import propTypesExact from "prop-types-exact"
 import Screen from "@/src/components/screen"
@@ -26,6 +27,8 @@ import {useConnections} from "@/src/connections/use-connections"
 /**
  * @typedef {object} JobsScreenState
  * @property {Array<Record<string, any>>} jobs - Loaded jobs.
+ * @property {Record<string, number> | null} counts - Live filter counts.
+ * @property {string | null} countErrorMessage - Count stream startup error.
  * @property {{page: number, perPage: number, total: number, totalPages: number} | null} pagination - Page info.
  * @property {string | null} errorMessage - Last fetch error.
  * @property {boolean} loading - Whether a load is in progress.
@@ -46,6 +49,10 @@ class JobsScreen extends ShapeComponent {
 
   mounted = true
   requestId = 0
+  sessionGeneration = 0
+
+  /** @type {JobCountsSession | null} */
+  countsSession = null
 
   /** @type {ConnectionsContextValue} */
   connections
@@ -55,6 +62,8 @@ class JobsScreen extends ShapeComponent {
 
   /** @type {JobsScreenState} */
   state = {
+    countErrorMessage: null,
+    counts: null,
     errorMessage: null,
     jobs: [],
     loading: true,
@@ -76,11 +85,22 @@ class JobsScreen extends ShapeComponent {
     useEffect(() => {
       void this.tt.loadJobs({page, status})
     }, [connectionId, status, page])
+
+    const connection = this.tt.connection()
+
+    useEffect(() => {
+      if (!connection) return
+
+      const session = this.tt.startCountsSession(connection)
+
+      return () => void this.tt.stopCountsSession(session)
+    }, [connection])
   }
 
   /** @returns {void} */
   componentWillUnmount() {
     this.mounted = false
+    this.sessionGeneration += 1
   }
 
   /** @returns {React.JSX.Element} - Rendered list. */
@@ -101,7 +121,7 @@ class JobsScreen extends ShapeComponent {
     const connectionId = connection.id
     const activeStatus = stringParam(this.params.status) || "all"
     const title = activeStatus === "handed_off" ? _("Running jobs") : _("Jobs")
-    const {errorMessage, jobs, loading} = this.s
+    const {countErrorMessage, counts, errorMessage, jobs, loading} = this.s
 
     return (
       <Screen testID="jobsScreen">
@@ -124,9 +144,23 @@ class JobsScreen extends ShapeComponent {
                 }}
                 testID={`jobsFilter-${filter}`}
               >
-                <Text style={styles[`filterText-${filter === activeStatus}`] ||= {color: filter === activeStatus ? colors.background : colors.textMuted, fontSize: 13, fontWeight: "600"}}>
-                  {filter}
-                </Text>
+                <View style={styles.filterContent ||= {alignItems: "center", flexDirection: "row", gap: 6}}>
+                  <Text style={styles[`filterText-${filter === activeStatus}`] ||= {color: filter === activeStatus ? colors.background : colors.textMuted, fontSize: 13, fontWeight: "600"}}>
+                    {filter}
+                  </Text>
+                  {counts &&
+                    <Text
+                      style={styles[`filterCount-${filter === activeStatus}`] ||= {
+                        color: filter === activeStatus ? colors.background : colors.text,
+                        fontSize: 12,
+                        fontWeight: "700"
+                      }}
+                      testID={`jobsFilterCount-${filter}`}
+                    >
+                      {counts[filter] ?? 0}
+                    </Text>
+                  }
+                </View>
               </Pressable>
             </Link>
           )}
@@ -137,6 +171,11 @@ class JobsScreen extends ShapeComponent {
         {errorMessage &&
           <Text style={styles.error ||= {color: colors.danger, fontSize: 14}} testID="jobsError">
             {errorMessage}
+          </Text>
+        }
+        {countErrorMessage &&
+          <Text style={styles.countError ||= {color: colors.danger, fontSize: 12}} testID="jobsCountsError">
+            {countErrorMessage}
           </Text>
         }
         {!loading && !errorMessage && jobs.length === 0 &&
@@ -182,6 +221,45 @@ class JobsScreen extends ShapeComponent {
     const connectionId = stringParam(this.params.connectionId)
 
     return connectionId ? this.connections.getConnection(connectionId) : undefined
+  }
+
+  /** @param {Connection} connection @returns {JobCountsSession} - Starts filter badge counts for this mount. */
+  startCountsSession(connection) {
+    const generation = ++this.sessionGeneration
+    const client = new JobsClient(connection)
+    const session = new JobCountsSession({
+      connection,
+      loadSnapshot: async () => await client.stats(),
+      onChange: (stats) => {
+        if (!this.mounted || generation !== this.sessionGeneration) return
+
+        this.setState({countErrorMessage: null, counts: stats.counts})
+      },
+      onError: (error) => {
+        if (!this.mounted || generation !== this.sessionGeneration) return
+
+        this.setState({countErrorMessage: error.message})
+      }
+    })
+
+    this.countsSession = session
+    void session.start().catch((error) => {
+      if (!this.mounted || generation !== this.sessionGeneration) return
+
+      this.setState({countErrorMessage: error instanceof Error ? error.message : String(error)})
+    })
+
+    return session
+  }
+
+  /** @param {JobCountsSession} session @returns {Promise<void>} - Stops a superseded mount session. */
+  async stopCountsSession(session) {
+    if (this.countsSession === session) {
+      this.sessionGeneration += 1
+      this.countsSession = null
+    }
+
+    await session.dispose()
   }
 
   /**
