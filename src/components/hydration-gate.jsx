@@ -1,9 +1,11 @@
 // @ts-check
 
-import {View} from "react-native"
+import {ActivityIndicator, View} from "react-native"
 import {shapeComponent, ShapeComponent} from "set-state-compare/build/shape-component"
+import _ from "gettext-universal/build/src/translate.js"
 import colors from "../theme/colors.js"
 import {memo} from "react"
+import useLocale from "gettext-universal/build/src/use-locale-expo.js"
 import {useConnections} from "../connections/use-connections.jsx"
 
 /**
@@ -36,6 +38,7 @@ class HydrationGate extends ShapeComponent {
 
   /** @returns {void} */
   setup() {
+    useLocale()
     this.connections = useConnections()
   }
 
@@ -44,9 +47,16 @@ class HydrationGate extends ShapeComponent {
     if (this.connections.loading) {
       return (
         <View
-          style={styles.boot ||= {backgroundColor: colors.background, flex: 1}}
+          style={styles.boot ||= {alignItems: "center", backgroundColor: colors.background, flex: 1, justifyContent: "center"}}
           testID="hydrationBoot"
-        />
+        >
+          <ActivityIndicator
+            accessibilityLabel={_("Loading dashboard")}
+            accessibilityRole="progressbar"
+            color={colors.primary}
+            testID="hydrationActivityIndicator"
+          />
+        </View>
       )
     }
 
