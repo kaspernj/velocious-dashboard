@@ -147,9 +147,9 @@ describe("live background-job count badges", () => {
 
         await reloadableSystemTest.visitPathWithDriverAndReconnect("/")
         await reloadableSystemTest.initializeBrowserContext()
-        await systemTest.waitForTestIDText("hydrationLoadingLabel", "Loading connections…")
+        await systemTest.findByTestID("hydrationBoot")
         await systemTest.visit(`/connections/${connectionId}/jobs`)
-        await systemTest.waitForTestIDText("hydrationLoadingLabel", "Loading connections…")
+        await systemTest.findByTestID("hydrationBoot")
         expect(fixture.requests).toEqual([])
 
         const reloadedHydration = await (await systemTest.getScoundrelClient()).getObject("VelociousDashboardConnectionsHydration")
@@ -200,7 +200,7 @@ describe("live background-job count badges", () => {
 
         await reloadableSystemTest.visitPathWithDriverAndReconnect("/")
         await reloadableSystemTest.initializeBrowserContext()
-        await systemTest.waitForTestIDText("hydrationLoadingLabel", "Loading connections…")
+        await systemTest.findByTestID("hydrationBoot")
         await systemTest.visit(`/connections/${connectionId}/jobs`)
         const reloadedHydration = await (await systemTest.getScoundrelClient()).getObject("VelociousDashboardConnectionsHydration")
 

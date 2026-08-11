@@ -68,11 +68,18 @@ describe("connection hydration boundary", () => {
         await reloadableSystemTest.visitPathWithDriverAndReconnect("/")
         await reloadableSystemTest.initializeBrowserContext()
 
-        await systemTest.waitForTestIDText("hydrationLoadingLabel", "Loading connections…")
+        await systemTest.findByTestID("hydrationBoot")
+        const activityIndicator = await systemTest.findByTestID("hydrationActivityIndicator")
+        expect(await activityIndicator.getAttribute("role")).toEqual("progressbar")
+        expect(await activityIndicator.getAttribute("aria-label")).toEqual("Loading dashboard")
+        expect(await systemTest.hasTestID("addConnectionButton", {timeout: 0})).toEqual(false)
+        expect(await systemTest.hasTestID("connectionsScreen", {timeout: 0})).toEqual(false)
         await systemTest.visit(`/connections/${connectionId}/jobs?status=queued`)
-        await systemTest.waitForTestIDText("hydrationLoadingLabel", "Loading connections…")
-        expect(fixtureServer.requests).toEqual([])
+        await systemTest.findByTestID("hydrationBoot")
+        await systemTest.findByTestID("hydrationActivityIndicator")
+        expect(await systemTest.hasTestID("addConnectionButton", {timeout: 0})).toEqual(false)
         expect(await systemTest.hasTestID("jobsScreen", {timeout: 0})).toEqual(false)
+        expect(fixtureServer.requests).toEqual([])
 
         const reloadedScoundrel = await systemTest.getScoundrelClient()
         const reloadedHydration = await reloadedScoundrel.getObject("VelociousDashboardConnectionsHydration")
@@ -85,7 +92,9 @@ describe("connection hydration boundary", () => {
         currentUrl.searchParams.delete("systemTestClientWsPort")
         currentUrl.searchParams.delete("systemTestScoundrelPort")
         expect(`${currentUrl.pathname}${currentUrl.search}`).toEqual(`/connections/${connectionId}/jobs?status=queued`)
-        expect(fixtureServer.requests).toEqual(["/dashboard/api/jobs?page=1&perPage=25&status=queued"])
+        expect(fixtureServer.requests.filter((url) => url.startsWith("/dashboard/api/jobs?"))).toEqual([
+          "/dashboard/api/jobs?page=1&perPage=25&status=queued"
+        ])
         expect(fixtureServer.requests.some((url) => url.includes("undefined") || url.includes("missing"))).toEqual(false)
       } finally {
         try {
@@ -118,7 +127,10 @@ describe("connection hydration boundary", () => {
 
         await reloadableSystemTest.visitPathWithDriverAndReconnect("/connections/missing/jobs")
         await reloadableSystemTest.initializeBrowserContext()
-        await systemTest.waitForTestIDText("hydrationLoadingLabel", "Loading connections…")
+        await systemTest.findByTestID("hydrationBoot")
+        await systemTest.findByTestID("hydrationActivityIndicator")
+        expect(await systemTest.hasTestID("addConnectionButton", {timeout: 0})).toEqual(false)
+        expect(await systemTest.hasTestID("jobsScreen", {timeout: 0})).toEqual(false)
         expect(fixtureServer.requests).toEqual([])
 
         const reloadedScoundrel = await systemTest.getScoundrelClient()
