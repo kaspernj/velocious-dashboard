@@ -48,6 +48,11 @@ are ignored, while revision gaps and reconnects trigger one coalesced recovery
 snapshot. Backends without the count-delta capability retain bounded legacy
 stats polling.
 
+During startup the app keeps a neutral background visible until persisted
+connections have hydrated. It does not use the connection form, overview, or
+another destination screen as a loading placeholder, so restored deep links
+open only after their connection state is ready.
+
 ## Embedded mode
 
 When the prebuilt web bundle is served by a backend (the planned `serveUi`
