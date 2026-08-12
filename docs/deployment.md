@@ -1,7 +1,7 @@
 # Production deployment with Rampway
 
 This project deploys its static Expo web export with Rampway 0.5.1. It does not
-use Capistrano or Ruby. Rampway connects to `server3` as `root` over SSH port 22
+use Capistrano or Ruby. Rampway connects to `server3.diestoeckels.de` as `root` over SSH port 22
 and uses a remote Git checkout from the `master` branch of
 `https://github.com/kaspernj/velocious-dashboard.git`.
 
@@ -46,7 +46,7 @@ handoff. None of these build checks is change-gated.
 
 Before the first rollout, confirm all prerequisites with read-only checks:
 
-- `server3` resolves and accepts the existing SSH-agent/config credentials for
+- `server3.diestoeckels.de` resolves and accepts the existing SSH-agent/config credentials for
   `root` on port 22.
 - Remote `node --version` is at least 22, and `npm --version` and
   `git --version` succeed.
@@ -80,7 +80,7 @@ complete:
 ```bash
 npm run deploy:status
 npm run deploy:releases
-ssh root@server3 'readlink /root/docker/velocious-dashboard-production/homedev/velocious-dashboard/current'
+ssh root@server3.diestoeckels.de 'readlink /root/docker/velocious-dashboard-production/homedev/velocious-dashboard/current'
 curl --fail --silent --show-error "$PRODUCTION_DASHBOARD_URL" >/dev/null
 ```
 

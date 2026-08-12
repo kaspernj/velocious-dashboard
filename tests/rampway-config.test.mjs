@@ -16,7 +16,7 @@ describe("Rampway production deployment", () => {
     assert.equal(production.deployTo, "/root/docker/velocious-dashboard-production/homedev/velocious-dashboard")
     assert.equal(production.strategy, "remote-git")
     assert.deepEqual(production.transport, {type: "ssh"})
-    assert.deepEqual(production.hosts, [{host: "server3", port: 22, user: "root"}])
+    assert.deepEqual(production.hosts, [{host: "server3.diestoeckels.de", port: 22, user: "root"}])
     assert.deepEqual(production.runtime, {type: "none"})
     assert.deepEqual(production.linkedFiles, [])
     assert.deepEqual(production.linkedDirs, [])

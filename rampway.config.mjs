@@ -9,7 +9,7 @@ export default {
       deployTo: "/root/docker/velocious-dashboard-production/homedev/velocious-dashboard",
       strategy: "remote-git",
       transport: {type: "ssh"},
-      hosts: [{host: "server3", port: 22, user: "root"}],
+      hosts: [{host: "server3.diestoeckels.de", port: 22, user: "root"}],
       keepReleases: 5,
       linkedFiles: [],
       linkedDirs: [],
