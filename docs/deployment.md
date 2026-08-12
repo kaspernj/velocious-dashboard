@@ -28,19 +28,18 @@ npm run deploy:validate
 ```
 
 A production release must be a full 40-character Git SHA that is already on
-`origin/master`. Fetch the approved branch, select its SHA, and review the plan:
+`origin/master`. First review Rampway's non-mutating structural plan:
 
 ```bash
-git fetch origin master
-REVISION=$(git rev-parse origin/master)
-git merge-base --is-ancestor "$REVISION" origin/master
-npm run deploy:plan -- --revision "$REVISION"
+npm run deploy:plan
 ```
 
-The plan must show the `remote-git` checkout, locked `npm ci`, all checks, unit
-tests, production test-boundary validation, Expo web export to `app/dist`, the
-Rampway Expo artifact check, the static entrypoint health check, and no runtime
-handoff. None of these build checks is change-gated.
+Rampway 0.5.1 does not support a positional revision for `plan`; this structural
+plan therefore reports the configured `master` branch, not a pinned SHA. It
+must show the `remote-git` checkout, locked `npm ci`, all checks, unit tests,
+production test-boundary validation, Expo web export to `app/dist`, the Rampway
+Expo artifact check, the static entrypoint health check, and no runtime handoff.
+None of these build checks is change-gated.
 
 ## First rollout
 
@@ -52,19 +51,24 @@ Before the first rollout, confirm all prerequisites with read-only checks:
   `git --version` succeed.
 - The deployment root exists and is writable by the SSH user.
 - The server can run `git ls-remote` against the configured HTTPS repository.
-- The plan names the approved full SHA and the expected host deployment root.
+- The structural plan names configured branch `master` and the expected host
+  deployment root.
 
 Deploy only with the guarded script and npm's explicit `--` argument
 forwarding:
 
 ```bash
+REVISION=<approved-full-40-character-git-sha>
 npm run deploy:production -- "$REVISION"
 ```
 
 The guard fetches `origin/master`, rejects anything except one full Git SHA,
 verifies the commit exists locally and is an ancestor of the fetched approved
-branch, and only then invokes Rampway over SSH. It never deploys uncommitted
-files or an arbitrary local `HEAD`.
+branch, and only then passes that SHA as the positional revision supported by
+Rampway's actual `deploy` command over SSH. It never deploys uncommitted files
+or an arbitrary local `HEAD`. This guarded operation is separate from
+`deploy:plan`; it is an actual deployment and has no dry-run mode in this
+project wrapper.
 
 Do not make any Nginx, Docker, mount, or server release-tree configuration
 changes during rollout. The existing legacy releases coexist in the same
