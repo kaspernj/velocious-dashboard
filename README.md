@@ -48,6 +48,10 @@ are ignored, while revision gaps and reconnects trigger one coalesced recovery
 snapshot. Backends without the count-delta capability retain bounded legacy
 stats polling.
 
+Production releases use the project-local JavaScript-only Rampway workflow.
+See [docs/deployment.md](docs/deployment.md) for validation, rollout, smoke
+checks, status, reports, and rollback procedures.
+
 During startup the app keeps a neutral activity indicator on the dashboard
 background until persisted connections have hydrated. It does not use the
 connection form, overview, or another destination screen as a loading
