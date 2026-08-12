@@ -1,18 +1,20 @@
 # Production deployment with Rampway
 
-This project deploys its static Expo web export with Rampway 0.5.2. It does not
+This project deploys its static Expo web export with Rampway 0.5.4. It does not
 use Capistrano or Ruby. Rampway connects to `server3.diestoeckels.de` as `root` over SSH port 22
 and uses a remote Git checkout from the `master` branch of
 `https://github.com/kaspernj/velocious-dashboard.git`.
 
 The host deployment root is
 `/root/docker/velocious-dashboard-production/homedev/velocious-dashboard`.
-Each immutable release is stored below `releases/<timestamp>-<sha>`, and Rampway
-atomically updates `current`. The Expo export is deliberately written to
-`app/dist` inside the release, so the published host path is `current/app/dist`.
-Production Nginx continues to serve the corresponding in-container path
-`/home/dev/velocious-dashboard/current/app/dist` through the existing Docker
-mount.
+Each immutable release is stored below `releases/<timestamp>-<sha>`. On normal
+deploy and rollback, Rampway atomically publishes `current` as a relative
+symlink to `releases/<release-id>`. The relative target remains valid when the
+deployment tree is exposed to the static-site container through its existing
+bind mount. The Expo export is deliberately written to `app/dist` inside the
+release, so the published host path is `current/app/dist`. Production Nginx
+continues to serve the corresponding in-container path
+`/home/dev/velocious-dashboard/current/app/dist` through that mount.
 
 Rampway uses the existing local SSH agent and SSH configuration. The project
 configuration contains only the SSH host, user, and port; it contains no keys,
@@ -36,7 +38,7 @@ REVISION=<approved-full-40-character-git-sha>
 npm run deploy:plan -- "$REVISION"
 ```
 
-Rampway 0.5.2 supports one positional revision for `plan`. npm's `--` forwards
+Rampway 0.5.4 supports one positional revision for `plan`. npm's `--` forwards
 the full SHA to that structural command; `deploy:plan` never invokes `deploy`
 and makes no remote or filesystem changes. The plan must report the full SHA
 and show the `remote-git` checkout, locked `npm ci`, all checks, unit tests,
