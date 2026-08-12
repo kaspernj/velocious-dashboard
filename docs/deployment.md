@@ -1,6 +1,6 @@
 # Production deployment with Rampway
 
-This project deploys its static Expo web export with Rampway 0.5.1. It does not
+This project deploys its static Expo web export with Rampway 0.5.2. It does not
 use Capistrano or Ruby. Rampway connects to `server3.diestoeckels.de` as `root` over SSH port 22
 and uses a remote Git checkout from the `master` branch of
 `https://github.com/kaspernj/velocious-dashboard.git`.
@@ -28,15 +28,18 @@ npm run deploy:validate
 ```
 
 A production release must be a full 40-character Git SHA that is already on
-`origin/master`. First review Rampway's non-mutating structural plan:
+`origin/master`. First review Rampway's non-mutating structural plan for that
+exact revision:
 
 ```bash
-npm run deploy:plan
+REVISION=<approved-full-40-character-git-sha>
+npm run deploy:plan -- "$REVISION"
 ```
 
-Rampway 0.5.1 does not support a positional revision for `plan`; this structural
-plan therefore reports the configured `master` branch, not a pinned SHA. It
-must show the `remote-git` checkout, locked `npm ci`, all checks, unit tests,
+Rampway 0.5.2 supports one positional revision for `plan`. npm's `--` forwards
+the full SHA to that structural command; `deploy:plan` never invokes `deploy`
+and makes no remote or filesystem changes. The plan must report the full SHA
+and show the `remote-git` checkout, locked `npm ci`, all checks, unit tests,
 production test-boundary validation, Expo web export to `app/dist`, the Rampway
 Expo artifact check, the static entrypoint health check, and no runtime handoff.
 None of these build checks is change-gated.
@@ -51,7 +54,7 @@ Before the first rollout, confirm all prerequisites with read-only checks:
   `git --version` succeed.
 - The deployment root exists and is writable by the SSH user.
 - The server can run `git ls-remote` against the configured HTTPS repository.
-- The structural plan names configured branch `master` and the expected host
+- The structural plan names the approved full SHA and the expected host
   deployment root.
 
 Deploy only with the guarded script and npm's explicit `--` argument

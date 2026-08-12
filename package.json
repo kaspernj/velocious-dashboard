@@ -52,7 +52,7 @@
     "@types/react": "~19.2.10",
     "eslint": "^9.39.2",
     "eslint-config-expo": "~55.0.0",
-    "rampway": "0.5.1",
+    "rampway": "0.5.2",
     "system-testing": "^1.0.125",
     "typescript": "~5.9.2"
   },

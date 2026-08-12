@@ -1,11 +1,14 @@
 // @ts-check
 
 import assert from "node:assert/strict"
+import {createRequire} from "node:module"
 import {describe, it} from "node:test"
 import config from "../rampway.config.mjs"
 import {assertProductionRevision} from "../scripts/rampway-deploy-production.mjs"
 
 const FULL_SHA = "a56eef4823cec39df3e2840682f548777f3dcf7a"
+const require = createRequire(import.meta.url)
+const {scripts} = require("../package.json")
 
 describe("Rampway production deployment", () => {
   it("targets the host deployment root and publishes the nginx static layout", () => {
@@ -38,5 +41,10 @@ describe("Rampway production deployment", () => {
     assert.throws(() => assertProductionRevision(), /full 40-character Git SHA/)
     assert.throws(() => assertProductionRevision("master"), /full 40-character Git SHA/)
     assert.throws(() => assertProductionRevision(FULL_SHA.slice(0, 12)), /full 40-character Git SHA/)
+  })
+
+  it("keeps structural planning separate from the guarded deploy wrapper", () => {
+    assert.equal(scripts["deploy:plan"], "rampway production plan --config rampway.config.mjs")
+    assert.equal(scripts["deploy:production"], "node scripts/rampway-deploy-production.mjs")
   })
 })
