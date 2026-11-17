@@ -1,4 +1,11 @@
 before_script:
   - npm install
+paths:
+  - "**"
+  - "!docs/**"
+  - "!README.md"
+  - "!system-tests/**"
+  - "system-tests/package.json"
+  - "system-tests/package-lock.json"
 script:
   - npm run all-checks
